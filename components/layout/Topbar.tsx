@@ -17,10 +17,10 @@ export const Topbar = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const navItems = [
-    { href: '#features', label: 'Features' },
-    { href: '#how-it-works', label: 'How it works' },
-    { href: '#pricing', label: 'Pricing' },
-    { href: '#about', label: 'About' },
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/capture', label: 'Capture' },
+    { href: '/ask', label: 'Ask AI' },
+    { href: '/docs', label: 'Docs' },
   ];
 
   // Check for logged in user on mount
@@ -77,23 +77,18 @@ export const Topbar = () => {
         {/* Navigation Links */}
         <nav className="hidden md:flex items-center gap-8">
           {navItems.map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               className="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-[#2b2bee] transition-colors"
             >
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
         {/* Auth Section */}
         <div className="flex items-center gap-3">
-          <Link href="/dashboard">
-            <button className="hidden sm:flex px-4 py-2 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">
-              Dashboard
-            </button>
-          </Link>
 
           {/* Show loading state, then auth state */}
           {!isLoaded ? (
