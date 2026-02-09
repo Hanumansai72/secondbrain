@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Topbar } from "@/components/layout/Topbar";
+import { useToast } from "@/components/ui/Toast";
 
 type CaptureMode = "manual" | "url";
 type ContentType = "note" | "insight" | "link";
@@ -22,6 +23,7 @@ interface ExtractedContent {
 }
 
 export default function CapturePage() {
+    const toast = useToast();
     const [mode, setMode] = useState<CaptureMode>("manual");
     const [contentType, setContentType] = useState<ContentType>("note");
     const [title, setTitle] = useState("");
@@ -120,7 +122,7 @@ export default function CapturePage() {
             const userid = localStorage.getItem("userid") || sessionStorage.getItem("userid");
 
             if (!userid) {
-                alert("Please login first");
+                toast.warning("Please login first");
                 setIsProcessing(false);
                 return;
             }
@@ -156,13 +158,13 @@ export default function CapturePage() {
                 setContent("");
                 setTags(["Productivity"]);
                 setExtractedContent(null);
-                alert("Saved to your brain!");
+                toast.success("Saved to your brain!");
             } else {
-                alert(data.message || "Failed to save");
+                toast.error(data.message || "Failed to save");
             }
         } catch (err) {
             console.error("Error saving:", err);
-            alert("Failed to save. Please try again.");
+            toast.error("Failed to save. Please try again.");
         }
 
         setIsProcessing(false);
@@ -178,7 +180,7 @@ export default function CapturePage() {
             const userid = localStorage.getItem("userid") || sessionStorage.getItem("userid");
 
             if (!userid) {
-                alert("Please login first");
+                toast.warning("Please login first");
                 setIsProcessing(false);
                 return;
             }
@@ -218,13 +220,13 @@ export default function CapturePage() {
                 setTitle("");
                 setContent("");
                 setTags(["Productivity"]);
-                alert("Note saved successfully!");
+                toast.success("Note saved successfully!");
             } else {
-                alert(data.message || "Failed to save note");
+                toast.error(data.message || "Failed to save note");
             }
         } catch (err) {
             console.error("Error saving note:", err);
-            alert("Failed to save note. Please try again.");
+            toast.error("Failed to save note. Please try again.");
         }
 
         setIsProcessing(false);

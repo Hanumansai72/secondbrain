@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 // Knowledge card types
 interface KnowledgeCard {
@@ -51,37 +52,44 @@ function SkeletonCard() {
   );
 }
 
-function KnowledgeCardComponent({ card }: { card: KnowledgeCard }) {
+function KnowledgeCardComponent({ card, index }: { card: KnowledgeCard; index: number }) {
   const config = typeConfig[card.Type] || typeConfig.note;
 
   return (
-    <Link href={`/knowledge/${card._id}`}>
-      <div className="group bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`flex items-center gap-2 ${config.color}`}>
-            <span className="text-lg">{config.icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest">{card.Type}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.08, ease: "easeOut" }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    >
+      <Link href={`/knowledge/${card._id}`}>
+        <div className="group bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all cursor-pointer h-full">
+          <div className="flex items-center justify-between mb-4">
+            <div className={`flex items-center gap-2 ${config.color}`}>
+              <span className="text-lg">{config.icon}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest">{card.Type}</span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium uppercase">{formatTime(card.createdAt)}</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-medium uppercase">{formatTime(card.createdAt)}</span>
+          <h3 className={`font-bold text-slate-900 dark:text-slate-100 mb-2 ${config.hoverColor} transition-colors line-clamp-1`}>
+            {card.Title}
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
+            {card.des || "No description"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {card.tags?.map((tag) => (
+              <span
+                key={tag}
+                className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-[10px] font-semibold text-slate-600 dark:text-slate-400"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
         </div>
-        <h3 className={`font-bold text-slate-900 dark:text-slate-100 mb-2 ${config.hoverColor} transition-colors line-clamp-1`}>
-          {card.Title}
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-4">
-          {card.des || "No description"}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {card.tags?.map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-[10px] font-semibold text-slate-600 dark:text-slate-400"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   );
 }
 
@@ -294,8 +302,8 @@ export default function Dashboard() {
                 <SkeletonCard />
               </>
             ) : filteredNotes.length > 0 ? (
-              filteredNotes.map((card) => (
-                <KnowledgeCardComponent key={card._id} card={card} />
+              filteredNotes.map((card, index) => (
+                <KnowledgeCardComponent key={card._id} card={card} index={index} />
               ))
             ) : notes.length === 0 ? (
               <EmptyState />

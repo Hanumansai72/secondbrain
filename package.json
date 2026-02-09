@@ -12,6 +12,7 @@
     "bcryptjs": "^3.0.3",
     "flowbite": "^4.0.1",
     "flowbite-react": "^0.12.16",
+    "framer-motion": "^12.33.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.6",
     "next": "16.1.6",

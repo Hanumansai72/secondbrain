@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/Toast';
 
 export default function Login() {
     const router = useRouter();
+    const toast = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -19,8 +19,6 @@ export default function Login() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError('');
-        setSuccess('');
 
         try {
             const response = await fetch('/api/auth/login', {
@@ -37,7 +35,7 @@ export default function Login() {
             const data = await response.json();
 
             if (data.success) {
-                setSuccess('Login successful! Redirecting...');
+                toast.success('Login successful! Redirecting...');
                 // Store user info in localStorage if remember me is checked
                 if (formData.rememberMe) {
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -53,10 +51,10 @@ export default function Login() {
                     router.push('/');
                 }, 1000);
             } else {
-                setError(data.message || 'Login failed. Please try again.');
+                toast.error(data.message || 'Login failed. Please try again.');
             }
         } catch (err) {
-            setError('Network error. Please check your connection.');
+            toast.error('Network error. Please check your connection.');
         } finally {
             setIsLoading(false);
         }

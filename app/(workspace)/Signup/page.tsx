@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 
 export default function SignupPage() {
     const router = useRouter();
+    const toast = useToast();
 
     const [formData, setFormData] = useState({
         name: "",
@@ -21,11 +23,10 @@ export default function SignupPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.password !== formData.confirmPassword) {
-            alert("Passwords don't match!");
+            toast.error("Passwords don't match!");
             return;
         }
         setIsLoading(true);
-        // Simulate signup
         try {
             const res = await fetch('/api/auth/signup', {
                 method: "POST",
@@ -36,20 +37,22 @@ export default function SignupPage() {
                     Full_Name: formData.name,
                     Email: formData.email,
                     Password: formData.password
-
                 })
             })
             const data = await res.json();
             if (data.success) {
-                router.push("/Login")
+                toast.success('Account created successfully! Please login.');
+                setTimeout(() => {
+                    router.push("/Login");
+                }, 1500);
+            } else {
+                toast.error(data.message || 'Signup failed. Please try again.');
             }
+        } catch (err) {
+            toast.error('Network error. Please check your connection.');
+        } finally {
+            setIsLoading(false);
         }
-
-        catch (err) {
-
-        }
-        await new Promise((r) => setTimeout(r, 1500));
-        setIsLoading(false);
     };
 
     return (
