@@ -1,71 +1,129 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
-// Sample knowledge data - in production, this would come from an API/database
-const knowledgeData = {
-    id: "1",
-    type: "Research Article",
-    title: "The Future of Neural Architectures: Beyond Transformers",
-    date: "October 24, 2023",
-    source: "arxiv.org/abs/2310.1234",
-    readTime: "12 min read",
-    tags: ["AI Safety", "Neural Networks", "Deep Learning"],
-    summary: {
-        intro: "This paper proposes a novel departure from traditional attention mechanisms, focusing on Linear Recurrent Units that achieve state-of-the-art performance with O(n) complexity. Key breakthroughs include:",
-        points: [
-            "Reduced memory footprint by 40%",
-            "Infinite context window scalability",
-            "Superior zero-shot transfer capabilities",
-            "Hardware-aware kernel optimizations",
-        ],
-    },
-    content: [
-        {
-            type: "paragraph",
-            text: "The dominance of the Transformer architecture in large-scale machine learning has been near-absolute since the introduction of the self-attention mechanism. However, as we scale to trillion-parameter models and multi-million token contexts, the quadratic cost of self-attention has become the primary bottleneck for both training and inference.",
-        },
-        {
-            type: "heading",
-            text: "The Scalability Wall",
-        },
-        {
-            type: "paragraph",
-            text: "Standard Attention (QK^T) requires O(n²) time and space. While FlashAttention and other tiling techniques have optimized the IO-awareness, the fundamental complexity remains. The authors argue that for truly general intelligence, we need architectures that can process \"infinite\" streams of data similar to biological systems.",
-        },
-        {
-            type: "quote",
-            text: "The next paradigm shift won't come from more compute, but from more efficient ways to selectively forget and attend to information over long horizons.",
-        },
-        {
-            type: "heading",
-            text: "Linear Recurrence as the Solution",
-        },
-        {
-            type: "paragraph",
-            text: "By reformulating recurrence as a parallelizable operation, the proposed model captures long-range dependencies without the square-law penalty. This allows for processing entire books or codebases in a single forward pass while maintaining a constant memory state.",
-        },
-        {
-            type: "paragraph",
-            text: "Experimental results on the Pile and C4 datasets show that these models not only match Transformers on perplexity but actually outperform them on long-form reasoning tasks where the Transformer's context window usually truncates.",
-        },
-    ],
-    coreTopics: [
-        { name: "Memory Efficiency", score: 98 },
-        { name: "Computational Complexity", score: 94 },
-        { name: "Transformer Bottlenecks", score: 89 },
-        { name: "Bio-inspired Logic", score: 82 },
-    ],
-    suggestedPrompts: [
-        "What are the key takeaways?",
-        "Explain the linear recurrence part.",
-        "How does this affect current LLMs?",
-    ],
-};
+interface NoteData {
+    id: string;
+    title: string;
+    description: string;
+    tags: string[];
+    type: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface AISummary {
+    summary: string;
+    keyPoints: string[];
+    aiGenerated: boolean;
+}
 
 export default function KnowledgeDetailPage() {
+    const params = useParams();
     const [aiQuestion, setAiQuestion] = useState("");
+    const [note, setNote] = useState<NoteData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
+    const [summarizing, setSummarizing] = useState(false);
+
+    // Fetch note data on mount
+    useEffect(() => {
+        const fetchNote = async () => {
+            if (!params.id) return;
+
+            try {
+                const res = await fetch(`/api/note/${params.id}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    setNote(data.note);
+                    // If it's a link type, get AI summary
+                    if (data.note.type === "link" && data.note.description) {
+                        fetchAISummary(data.note.description);
+                    }
+                } else {
+                    setError(data.message || "Failed to fetch note");
+                }
+            } catch (err) {
+                console.error("Error fetching note:", err);
+                setError("Failed to load note");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNote();
+    }, [params.id]);
+
+    // Fetch AI summary for the description
+    const fetchAISummary = async (text: string) => {
+        setSummarizing(true);
+        try {
+            const res = await fetch("/api/summarize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setAiSummary({
+                    summary: data.summary,
+                    keyPoints: data.keyPoints || [],
+                    aiGenerated: data.aiGenerated
+                });
+            }
+        } catch (err) {
+            console.error("Error fetching AI summary:", err);
+        } finally {
+            setSummarizing(false);
+        }
+    };
+
+    // Format date
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+        });
+    };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="w-full min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-[#2b2bee] border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-500">Loading knowledge...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error || !note) {
+        return (
+            <div className="w-full min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{error || "Note not found"}</h2>
+                    <Link href="/dashboard" className="inline-flex items-center gap-2 text-[#2b2bee] hover:underline">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        Back to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full flex flex-col bg-white dark:bg-slate-900 text-[#1a1a1e] dark:text-gray-100 antialiased">
@@ -105,7 +163,7 @@ export default function KnowledgeDetailPage() {
             </header>
 
             {/* Main Content */}
-            <main className=" w-full px-6 py-10 lg:flex gap-12">
+            <main className="w-full px-6 py-10 lg:flex gap-12">
                 {/* Article Content */}
                 <div className="lg:w-[70%] space-y-8">
                     {/* Article Header */}
@@ -114,11 +172,11 @@ export default function KnowledgeDetailPage() {
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            {knowledgeData.type}
+                            {note.type || "Note"}
                         </div>
 
                         <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
-                            {knowledgeData.title}
+                            {note.title}
                         </h1>
 
                         <div className="flex flex-wrap items-center gap-y-4 gap-x-6 text-sm text-gray-500 dark:text-gray-400">
@@ -126,24 +184,12 @@ export default function KnowledgeDetailPage() {
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
-                                <span>{knowledgeData.date}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                                </svg>
-                                <a href="#" className="hover:text-[#2b2bee] underline underline-offset-4">{knowledgeData.source}</a>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                </svg>
-                                <span>{knowledgeData.readTime}</span>
+                                <span>{formatDate(note.createdAt)}</span>
                             </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {knowledgeData.tags.map((tag) => (
+                            {note.tags.map((tag) => (
                                 <span
                                     key={tag}
                                     className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-semibold rounded-full border border-gray-200 dark:border-gray-700"
@@ -154,55 +200,46 @@ export default function KnowledgeDetailPage() {
                         </div>
                     </header>
 
-                    {/* AI Summary Section */}
-                    <section className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 lg:p-8 space-y-4 shadow-sm">
-                        <div className="flex items-center gap-3 text-[#2b2bee]">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                            </svg>
-                            <h3 className="font-bold text-lg">AI Insight Summary</h3>
-                        </div>
-                        <div className="text-gray-700 dark:text-gray-300 space-y-3 leading-relaxed">
-                            <p>
-                                {knowledgeData.summary.intro.split("Linear Recurrent Units").map((part, i, arr) =>
-                                    i < arr.length - 1 ? (
-                                        <span key={i}>{part}<strong className="text-indigo-900 dark:text-indigo-200">Linear Recurrent Units</strong></span>
-                                    ) : (
-                                        <span key={i}>{part}</span>
-                                    )
+                    {/* AI Summary Section - Only for link types with summary */}
+                    {note.type === "link" && (aiSummary || summarizing) && (
+                        <section className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-2xl p-6 lg:p-8 space-y-4 shadow-sm">
+                            <div className="flex items-center gap-3 text-[#2b2bee]">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                                </svg>
+                                <h3 className="font-bold text-lg">AI Insight Summary</h3>
+                                {aiSummary?.aiGenerated && (
+                                    <span className="px-2 py-0.5 bg-[#2b2bee]/10 text-[#2b2bee] text-[10px] font-bold rounded-full">AI GENERATED</span>
                                 )}
-                            </p>
-                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none">
-                                {knowledgeData.summary.points.map((point) => (
-                                    <li key={point} className="flex items-start gap-2">
-                                        <svg className="w-4 h-4 text-[#2b2bee] mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span>{point}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </section>
+                            </div>
+                            {summarizing ? (
+                                <div className="flex items-center gap-3 text-slate-500">
+                                    <div className="w-5 h-5 border-2 border-[#2b2bee] border-t-transparent rounded-full animate-spin" />
+                                    <span>Generating AI summary...</span>
+                                </div>
+                            ) : aiSummary && (
+                                <div className="text-gray-700 dark:text-gray-300 space-y-3 leading-relaxed">
+                                    <p>{aiSummary.summary}</p>
+                                    {aiSummary.keyPoints.length > 0 && (
+                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 list-none">
+                                            {aiSummary.keyPoints.map((point, i) => (
+                                                <li key={i} className="flex items-start gap-2">
+                                                    <svg className="w-4 h-4 text-[#2b2bee] mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    )}
 
-                    {/* Article Content */}
-                    <article className="text-gray-800 dark:text-gray-200 w-full text-lg leading-relaxed dark:bg-slate-900" >
-                        {knowledgeData.content.map((block, index) => {
-                            if (block.type === "paragraph") {
-                                return <p key={index} className="mb-6">{block.text}</p>;
-                            }
-                            if (block.type === "heading") {
-                                return <h2 key={index} className="text-2xl font-bold mt-10 mb-4">{block.text}</h2>;
-                            }
-                            if (block.type === "quote") {
-                                return (
-                                    <div key={index} className="my-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-l-4 border-[#2b2bee]">
-                                        <p className="italic text-gray-600 dark:text-gray-400">&quot;{block.text}&quot;</p>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
+                    {/* Note Content */}
+                    <article className="text-gray-800 dark:text-gray-200 w-full text-lg leading-relaxed dark:bg-slate-900">
+                        <div className="whitespace-pre-wrap">{note.description}</div>
                     </article>
                 </div>
 
@@ -233,7 +270,7 @@ export default function KnowledgeDetailPage() {
                             <div className="space-y-2">
                                 <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Suggested Prompts</p>
                                 <div className="flex flex-col gap-2">
-                                    {knowledgeData.suggestedPrompts.map((prompt) => (
+                                    {["What are the key takeaways?", "Summarize this in simple terms", "What are the action items?"].map((prompt) => (
                                         <button
                                             key={prompt}
                                             onClick={() => setAiQuestion(prompt)}
@@ -243,30 +280,6 @@ export default function KnowledgeDetailPage() {
                                         </button>
                                     ))}
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Core Topics Card */}
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                    </svg>
-                                    Core Topics
-                                </h3>
-                                <span className="text-[10px] px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full font-bold">AI Verified</span>
-                            </div>
-                            <div className="space-y-3">
-                                {knowledgeData.coreTopics.map((topic) => (
-                                    <div
-                                        key={topic.name}
-                                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group cursor-pointer"
-                                    >
-                                        <span className="text-sm text-gray-700 dark:text-gray-300">{topic.name}</span>
-                                        <span className="text-xs text-gray-400 group-hover:text-[#2b2bee]">{topic.score}%</span>
-                                    </div>
-                                ))}
                             </div>
                         </div>
 
